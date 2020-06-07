@@ -6,13 +6,15 @@ import graph_tool.topology as gtt
 import numpy as np
 import math
 
-    
+import torch
+
+
 class TransportGraph:
     def __init__(self, graph_data, maxpath_const = 3):
-        graph_table = graph_data['graph_table']
+        graph_table = graph_data.graph
 
-        self.nodes_number = graph_data['kNodesNumber']
-        self.links_number = graph_data['kLinksNumber']
+        self.nodes_number = graph_data.nodes_number
+        self.links_number = graph_data.links_number
         self.max_path_length = maxpath_const * int(math.sqrt(self.links_number))
         
         self.graph = gt.Graph(directed=True)
@@ -64,7 +66,7 @@ class TransportGraph:
         return self.graph.get_out_edges(node_index)
     
     def shortest_distances(self, source, targets, times):
-        ep_time_map = self.graph.new_edge_property("double", vals = times)
+        ep_time_map = self.graph.new_edge_property("double", vals = times.detach().numpy())
         distances, pred_map = gtt.shortest_distance(g = self.graph,
                                                     source = source,
                                                     target = targets,

@@ -108,7 +108,7 @@ class PhiBigOracle(BaseOracle):
         #print('Stop reset')
 
     def func(self, t_parameter):
-        if self.t_current is None or np.any(self.t_current != t_parameter):
+        if self.t_current is None or torch.any(self.t_current != t_parameter):
             self._reset(t_parameter)
         return self.func_current
 
