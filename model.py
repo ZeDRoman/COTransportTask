@@ -28,14 +28,14 @@ class Model:
         return self.primal_dual_calculator.dual_func_value(self.t)
 
     def solve(self, num_iters=1000):
-        optimizer = optim.SGD([self.t], lr=0.01, momentum=0.9)
+        optimizer = optim.Adam([self.t], lr=0.1)
         for i in range(num_iters):
             optimizer.zero_grad()
             loss = self.loss()
-            loss.backward()
+            loss.backward(retain_graph=True)
             optimizer.step()
             print(loss)
-    # def find_equilibrium(self, t_0):
+        print(self.t)
 
 
 data_reader = DataReader()

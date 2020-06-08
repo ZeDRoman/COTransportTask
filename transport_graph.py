@@ -7,7 +7,21 @@ import numpy as np
 import math
 
 import torch
+from numba import njit
 
+def get_tree_order(nodes_number, targets, pred_arr):
+    #get nodes visiting order for flow calculation
+    visited = np.zeros(nodes_number, dtype = np.bool_)
+    sorted_vertices = [0] * 0
+    for vertex in targets:
+        temp = []
+        while (not visited[vertex]):
+            visited[vertex] = True
+            if pred_arr[vertex] != vertex:
+                temp.append(vertex)
+                vertex = pred_arr[vertex]
+        sorted_vertices[0:0] = temp
+    return sorted_vertices
 
 class TransportGraph:
     def __init__(self, graph_data, maxpath_const = 3):
@@ -72,7 +86,18 @@ class TransportGraph:
                                                     target = targets,
                                                     weights = ep_time_map,
                                                     pred_map = True)
-        return torch.from_numpy(distances), pred_map.a
+        sorted_vertices = get_tree_order(self.nodes_number, targets, pred_map)
+        pred_edges = [self.pred_to_edge[vertex][pred_map[vertex]] for vertex in sorted_vertices]
+        path = {}
+        for j in targets:
+            i = j
+            path[j] = []
+            while i != source:
+                i_next = pred_map[i]
+                path[j].append(self.pred_to_edge[i][i_next])
+                i = i_next
+        distances = torch.stack([torch.index_select(times, 0, torch.tensor(path[i])).sum() for i in targets])
+        return distances, pred_map.a
 
 #    def nodes_number(self):
 #        return self.nodes_number
