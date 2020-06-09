@@ -127,14 +127,19 @@ class DataReader:
         with open(filename) as file:
             lines = file.readlines()
 
-        lines = np.array(lines)[range(1, len(lines))]
+        datalist = []
+        for line in lines:
+            if re.search('[a-zA-Z]', line) is None and re.search('[0-9]', line) is not None:
+                datalist.append(line)
+
+        lines = [line.strip('[\t; ]') for line in datalist]
+
         values_dict = {'flow': [], 'time': []}
 
         for line in lines:
-            line = line.strip('[ \n]')
-            nums = line.split(' \t')
-            values_dict['flow'].append(float(nums[2]))
-            values_dict['time'].append(float(nums[3]))
+            items = line.split()
+            values_dict['flow'].append(float(items[3]))
+            values_dict['time'].append(float(items[4]))
 
         self.values_dict = values_dict
         return values_dict
