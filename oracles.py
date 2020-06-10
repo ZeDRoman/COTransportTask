@@ -22,7 +22,6 @@ def get_tree_order(nodes_number, targets, pred_arr):
         sorted_vertices[0:0] = temp
     return sorted_vertices
 
-@njit
 def get_flows(nodes_number, edges_number, targets, target_flows, pred_arr, pred_edges, sorted_vertices):  
     flows = np.zeros(edges_number, dtype = np.float_)
     vertex_flows = np.zeros(nodes_number, dtype = np.float_)
@@ -80,6 +79,17 @@ class AutomaticOracle(BaseOracle):
     def update_shortest_paths(self, t_parameter):
         self.distances, self.pred_map = self.graph.shortest_distances(self.source_index, self.corr_targets, t_parameter)
 
+    def new_func(self, t_parameter):
+        val = None
+        for i in range(self.corr_targets.shape[0]):
+            path_tensor = self.graph.get_path_tensor(self.source_index, self.corr_targets[i])
+            v = self.corr_values[i] * torch.log(torch.exp(-torch.matmul(path_tensor, t_parameter)).sum())
+            if val is None:
+                val = v
+            else:
+                val += v
+        return val
+
 
 class PhiBigOracle(BaseOracle):
     def __init__(self, graph, correspondences, processes_number = None):
@@ -108,13 +118,11 @@ class PhiBigOracle(BaseOracle):
         #print('Stop reset')
 
     def func(self, t_parameter):
-        if self.t_current is None or torch.any(self.t_current != t_parameter):
-            self._reset(t_parameter)
+        # if self.t_current is None or torch.any(self.t_current != t_parameter):
+        self._reset(t_parameter)
         return self.func_current
 
     def grad(self, t_parameter):
-        if self.t_current is None or np.any(self.t_current != t_parameter):
-            self._reset(t_parameter)
         tic = time.time()
         self.t_current = t_parameter
         self.grad_current = np.zeros(self.graph.links_number)
@@ -122,3 +130,13 @@ class PhiBigOracle(BaseOracle):
             self.grad_current += auto_oracle.grad(self.t_current)
         self.time += time.time() - tic
         return self.grad_current
+
+    def new_func(self, t_parameter):
+        value = None
+        for auto_oracle in self.auto_oracles:
+            v = auto_oracle.new_func(t_parameter)
+            if value is None:
+                value = v
+            else:
+                value += v
+        return value

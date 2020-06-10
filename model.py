@@ -17,24 +17,29 @@ class Model:
         self.total_od_flow = total_od_flow
         self.mu = mu
         self.rho = rho
-        self.t = torch.tensor(np.array(transport_graph.graph[['Free Flow Time']], dtype = 'float64').flatten(), requires_grad=True)
+        self.t = torch.tensor(np.array(transport_graph.graph[['Free Flow Time']], dtype='float64').flatten(), requires_grad=True)
 
-        phi_big_oracle = oracles.PhiBigOracle(self.graph, self.graph_correspondences)
-        self.primal_dual_calculator = dfc.PrimalDualCalculator(phi_big_oracle,
+        self.phi_big_oracle = oracles.PhiBigOracle(self.graph, self.graph_correspondences)
+        self.primal_dual_calculator = dfc.PrimalDualCalculator(self.phi_big_oracle,
                                                           self.graph.freeflow_times, self.graph.capacities,
                                                           mu = self.mu, rho = self.rho)
 
     def loss(self):
         return self.primal_dual_calculator.dual_func_value(self.t)
 
+    def new_loss(self):
+        return self.primal_dual_calculator.new_dual_func_value(self.t)
+
     def solve(self, num_iters=1000):
-        optimizer = optim.Adam([self.t], lr=0.1)
+        optimizer = optim.Adam([self.t], lr=0.001)
         for i in range(num_iters):
             optimizer.zero_grad()
-            loss = self.loss()
+            loss = self.new_loss()
             loss.backward(retain_graph=True)
             optimizer.step()
-            print(loss)
+            # print("new", loss)
+            # print("old", self.loss())
+            print(self.t.sum())
         print(self.t)
 
 

@@ -7,7 +7,9 @@ import numpy as np
 import math
 
 import torch
-from numba import njit
+import os
+
+SAVE_DIR = "torch_path/"
 
 def get_tree_order(nodes_number, targets, pred_arr):
     #get nodes visiting order for flow calculation
@@ -61,6 +63,8 @@ class TransportGraph:
         for node_index in range(self.nodes_number):
             self.pred_to_edge[node_index] = {source: edge_index 
                                              for source, _, edge_index in self.in_edges(node_index)}
+
+        self.path_tensors = {}
        
     def get_graphtool(self):
         return self.graph
@@ -101,12 +105,35 @@ class TransportGraph:
 
 #    def nodes_number(self):
 #        return self.nodes_number
-    
+
 #    def links_number(self):
 #        return self.links_number
-    
+
 #    def capacities(self):
 #        return self.capacities
-    
+
 #    def freeflow_times(self):
 #        return self.freeflow_times
+
+    def create_path_tensor(self, source, target, path_amount=100, path_length=30):
+        file = SAVE_DIR + "{}_{}.pt".format(source, target)
+        if os.path.isfile(file):
+            return torch.load(file)
+        path_generator = gtt.all_paths(self.graph, source, target, path_length)
+        path_tensor = torch.zeros((path_amount, self.links_number), dtype=torch.double)
+        for i in range(path_amount):
+            p = next(path_generator)
+            for j in range(1, len(p)):
+                path_tensor[i][self.pred_to_edge[p[j]][p[j - 1]]] = 1
+        torch.save(path_tensor, file)
+        return path_tensor
+
+    def get_path_tensor(self, source, target):
+        if source not in self.path_tensors:
+            self.path_tensors[source] = {}
+        if target not in self.path_tensors[source]:
+            self.path_tensors[source][target] = self.create_path_tensor(source, target)
+        return self.path_tensors[source][target]
+
+
+
