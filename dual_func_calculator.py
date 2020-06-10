@@ -19,6 +19,15 @@ class PrimalDualCalculator:
                                        (self.rho * self.freeflowtimes)) ** self.mu) / (1.0 + self.mu)
         return self.phi_big_oracle.func(times) + h_function_value
 
+    def new_dual_func_value(self, times):
+        if self.mu == 0:
+            h_function_value = torch.matmul(self.capacities, torch.max(times - self.freeflowtimes, 0))
+        else:
+            h_function_value = torch.sum(self.capacities * (torch.max(times - self.freeflowtimes, torch.zeros(times.shape, dtype=torch.double))) *
+                                      (torch.max(times - self.freeflowtimes, torch.zeros(times.shape, dtype=torch.double)) /
+                                       (self.rho * self.freeflowtimes)) ** self.mu) / (1.0 + self.mu)
+        return self.phi_big_oracle.new_func(times) + h_function_value
+
     def primal_func_value(self, flows):
         if self.mu == 0:
             return np.dot(self.freeflowtimes, flows)  #sigma_sum_function
