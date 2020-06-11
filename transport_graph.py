@@ -103,18 +103,6 @@ class TransportGraph:
         distances = torch.stack([torch.index_select(times, 0, torch.tensor(path[i])).sum() for i in targets])
         return distances, pred_map.a
 
-#    def nodes_number(self):
-#        return self.nodes_number
-
-#    def links_number(self):
-#        return self.links_number
-
-#    def capacities(self):
-#        return self.capacities
-
-#    def freeflow_times(self):
-#        return self.freeflow_times
-
     def create_path_tensor(self, source, target, path_amount=100, path_length=30):
         file = SAVE_DIR + "{}_{}.pt".format(source, target)
         if os.path.isfile(file):
@@ -134,6 +122,3 @@ class TransportGraph:
         if target not in self.path_tensors[source]:
             self.path_tensors[source][target] = self.create_path_tensor(source, target)
         return self.path_tensors[source][target]
-
-
-

@@ -111,9 +111,13 @@ class PhiBigOracle(BaseOracle):
         #print('Start reset')
         tic = time.time()
         self.t_current = t_parameter
-        self.func_current = torch.zeros(1)
+        self.func_current = None
         for auto_oracle in self.auto_oracles:
-            self.func_current += auto_oracle.func(self.t_current)
+            v = auto_oracle.func(self.t_current)
+            if self.func_current is None:
+                self.func_current = v
+            else:
+                self.func_current += v
         self.time += time.time() - tic
         #print('Stop reset')
 
