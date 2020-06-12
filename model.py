@@ -54,16 +54,34 @@ class Model:
                               [self.graph_correspondences[base_v][i] for i in self.graph_correspondences[base_v]])
 
         coef_t = (in_edges_sum - out_edges_sum) / (in_flows_sum - out_lows_sum)
+        #print("asd", coef_t)
         flows = flows / coef_t
         return flows
 
+    def check_graph(self, flows):
+        for v in self.graph_correspondences.keys():
+            in_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.in_edges(
+                v - 1)))  # list(map(lambda x: x[0], phi_big_oracle.graph.in_edges(v - 1)))
+            out_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.out_edges(
+                v - 1)))  # list(map(lambda x: x[1], phi_big_oracle.graph.out_edges(v - 1)))
 
-    def solve(self, num_iters=100):
-        optimizer = optim.Adam([self.t], lr=0.01)
+            in_edges_sum = flows[in_edges].sum()
+            out_edges_sum = flows[out_edges].sum()
+            in_flows_sum = reduce(lambda x, y: x + y,
+                                  [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0 for i
+                                   in
+                                   self.graph_correspondences])
+            out_lows_sum = reduce(lambda x, y: x + y,
+                                  [self.graph_correspondences[v][i] for i in self.graph_correspondences[v]])
+
+            print(in_edges_sum - out_edges_sum - in_flows_sum + out_lows_sum)
+
+    def solve(self, num_iters=1000):
+        optimizer = optim.SGD([self.t], lr=0.000002, momentum=0.9)
         for i in range(num_iters):
             optimizer.zero_grad()
             loss = self.loss()
-            loss.backward(retain_graph=True)
+            loss.backward()
             optimizer.step()
             # print("new", loss)
             # print("old", self.loss())
@@ -71,22 +89,13 @@ class Model:
             print(self.primal_dual_calculator.primal_func_value(self.get_flows()))
 
         flows = self.get_flows()
+        #print(flows - self.t.grad)
+      #  print(len(self.t.grad), self.t.grad)
 
-        for v in self.graph_correspondences.keys():
-            in_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.in_edges(v - 1))) #list(map(lambda x: x[0], phi_big_oracle.graph.in_edges(v - 1)))
-            out_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.out_edges(v - 1))) #list(map(lambda x: x[1], phi_big_oracle.graph.out_edges(v - 1)))
 
-            in_edges_sum = flows[in_edges].sum()
-            out_edges_sum = flows[out_edges].sum()
-            in_flows_sum = reduce(lambda x, y: x + y,
-                                  [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0 for i in
-                                   self.graph_correspondences])
-            out_lows_sum = reduce(lambda x, y: x + y,
-                                  [self.graph_correspondences[v][i] for i in self.graph_correspondences[v]])
-
-            print(in_edges_sum - out_edges_sum - in_flows_sum + out_lows_sum)
         # flows = self.get_flows()
         # print(flows)
+        #self.check_graph(flows)
 
 
 data_reader = DataReader()
