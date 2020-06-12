@@ -1,18 +1,14 @@
-# model parameters:
 from functools import reduce
 
-
 import transport_graph as tg
-
-from torch import optim
 
 import torch
 
 import oracles
 import dual_func_calculator as dfc
-from prox_h import ProxH
 
 from data_reader.data_reader import *
+
 
 class Model:
     def __init__(self, transport_graph, total_od_flow=None, mu=0.25, rho=0.15):
@@ -21,12 +17,15 @@ class Model:
         self.total_od_flow = total_od_flow
         self.mu = mu
         self.rho = rho
-        self.t = torch.tensor(np.array(transport_graph.graph[['Free Flow Time']], dtype='float64').flatten(), requires_grad=True)
+        self.t = torch.tensor(np.array(transport_graph.graph[['Free Flow Time']], dtype='float64').flatten(),
+                              requires_grad=True)
 
         self.phi_big_oracle = oracles.PhiBigOracle(self.graph, self.graph_correspondences)
         self.primal_dual_calculator = dfc.PrimalDualCalculator(self.phi_big_oracle,
-                                                          self.graph.freeflow_times, self.graph.capacities,
-                                                          mu = self.mu, rho = self.rho)
+                                                               self.graph.freeflow_times, self.graph.capacities,
+                                                               mu=self.mu, rho=self.rho)
+
+        self.grad_sum = None
 
     def loss_phi(self):
         return self.primal_dual_calculator.dual_func_value(self.t)
@@ -51,13 +50,14 @@ class Model:
         in_edges_sum = flows[in_edges].sum()
         out_edges_sum = flows[out_edges].sum()
         in_flows_sum = reduce(lambda x, y: x + y,
-                              [self.graph_correspondences[i][base_v] if base_v in self.graph_correspondences[i] else 0 for i in
+                              [self.graph_correspondences[i][base_v] if base_v in self.graph_correspondences[i] else 0
+                               for i in
                                self.graph_correspondences])
         out_lows_sum = reduce(lambda x, y: x + y,
                               [self.graph_correspondences[base_v][i] for i in self.graph_correspondences[base_v]])
 
         coef_t = (in_edges_sum - out_edges_sum) / (in_flows_sum - out_lows_sum)
-        #print("asd", coef_t)
+        # print("asd", coef_t)
         flows = flows / coef_t
         return flows
 
@@ -79,37 +79,47 @@ class Model:
 
             print(in_edges_sum - out_edges_sum - in_flows_sum + out_lows_sum)
 
-    def solve(self, num_iters=1000):
-        optimizer = optim.RMSprop([self.t], lr=0.01)
-        grad_sum = None
+    def solve(self, optimizer, num_iters=1000, loss_history=False, verbose=False):
+        """
+        If loss_history is True, list of primal function values is returned
+        :param optimizer:
+        :param num_iters:
+        :param loss_history:
+        :return: flows, loss_history? TODO
+        """
+        primal_values = []
+
         for i in range(num_iters):
             optimizer.zero_grad()
+
             loss = self.loss_phi()
             loss.backward()
-            if grad_sum is None:
-                grad_sum = -self.t.grad
+
+            if self.grad_sum is None:
+                self.grad_sum = -self.t.grad
             else:
-                grad_sum -= self.t.grad
+                self.grad_sum -= self.t.grad
+
             loss = self.loss_h()
             loss.backward()
+
             optimizer.step()
-            # print("new", loss)
-            # print("old", self.loss())
-            # print(self.t.sum())
-            print(self.primal_dual_calculator.primal_func_value(self.get_flows(grad_sum)))
 
-        flows = self.get_flows(grad_sum)
-        #print(flows - self.t.grad)
-      #  print(len(self.t.grad), self.t.grad)
+            primal_value = self.primal_dual_calculator.primal_func_value(self.get_flows(self.grad_sum))
+            if verbose:
+                print(primal_value)
+            if loss_history:
+                primal_values.append(primal_value)
 
+        flows = self.get_flows(self.grad_sum)
 
-        # flows = self.get_flows()
-        # print(flows)
-        #self.check_graph(flows)
+        if loss_history:
+            return flows, primal_values
+        return flows
 
-
-data_reader = DataReader()
-graph = data_reader.GetGraphStructure("data/Anaheim_net.tntp", [0, 1, 2, 4])[0]
-data_reader.GetGraphCorrespondences("data/Anaheim_trips.tntp")
-model = Model(data_reader)
-model.solve()
+#
+# data_reader = DataReader()
+# data_reader.read_graph("data/Anaheim_net.tntp", [0, 1, 2, 4])
+# data_reader.read_correspondences("data/Anaheim_trips.tntp")
+# model = Model(data_reader)
+# model.solve()

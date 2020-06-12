@@ -1,3 +1,6 @@
+from typing import Dict, Any, List
+
+from pandas import DataFrame
 from scanf import scanf
 import re
 import numpy as np
@@ -5,16 +8,28 @@ import pandas as pd
 
 
 class DataReader:
-    graph = None
-    nodes_number = None
-    links_number = None
-    graph_correspondences = None
-    total_od_flow = None
-    values_dict = None
+    def __init__(self):
+        self.graph = None
+        self.graph_correspondences = None
+        self.nodes_number = None
+        self.links_number = None
+        self.flow = None
 
-    # TODO One data reader func
+    def read_all(self, graph_filename=None, correspondences_filename=None, answer_filename=None):
+        """
+        Wrapper for reading all the data (where filename was provided)
+        No return value, method fills class fields
+        """
+        if graph_filename is not None:
+            self.read_graph(graph_filename)
 
-    def GetGraphStructure(self, file_name, columns_order):
+        if correspondences_filename is not None:
+            self.read_correspondences(correspondences_filename)
+
+        if answer_filename is not None:
+            self.read_answer(answer_filename)
+
+    def read_graph(self, file_name, columns_order=(0, 1, 2, 4)):
         """
             Reads graph from file, see Anaheim_net.tntp for example
             :param file_name: name of file containing graph saved in .tntp format
@@ -22,23 +37,26 @@ class DataReader:
                     first index - edge tail
                     second index - edge head
                     third index - edge capacity
-                    forth index - edge length, a.k.a. Free flow time
+                    forth index - edge free flow time
                     other columns ignored
-            :return: df - pandas dataframe representing graph
-            :return edges_number - number of edges
+            self.graph - pandas dataframe with 4 given columns
+            self.links_number - number of edges in graph
+            self.nodes_number - number of vertices in graph
         """
 
         if self.graph is not None:
-            return self.graph, self.links_number
+            return
 
         with open(file_name, 'r') as file:
             data = file.read()
 
-        # skip <NUMBER OF ZONES>, <FIRST THRU NODE>, <NUMBER OF NODES> parameters, will get from graph correspondences
+        # skip <NUMBER OF ZONES>, <FIRST THRU NODE>, <NUMBER OF NODES> parameters,
+        # will get necessary params from graph correspondences
         # reads some graph metadata
         nodes_number = scanf('<NUMBER OF NODES> %d', data)[0]
         links_number = scanf('<NUMBER OF LINKS> %d', data)[0]
 
+        # column names
         headlist = ['Init node', 'Term node', 'Capacity', 'Free Flow Time']
 
         # get line list
@@ -67,34 +85,29 @@ class DataReader:
         self.links_number = links_number
         self.nodes_number = nodes_number
 
-        return graph, links_number
-
-    def GetGraphCorrespondences(self, file_name):
+    def read_correspondences(self, file_name):
         """
-           Reads information about sources and destinations of flow, see Anaheim_trips.tntp for example
-           Flow is transferred only between origins (first <NUMBER OF ZONES> nodes)
-           :param file_name: name of file containing list of origins (sources), saved in .tntp format
+            Reads information about sources and destinations of flow, see Anaheim_trips.tntp for example
+            Flow is transferred only between origins (first <NUMBER OF ZONES> nodes usually, indexed from 1)
+            :param file_name: name of file containing list of origins (sources), saved in .tntp format
             for each origin - list of flows to all the other origins
-           :return: graph_correspondences - map from origin number. value - map[dstOriginId] -> flow.
-                    Thus, map represents required amount of flow to be transfered between pair of origins.
-           :return total_od_flow - total amount of flow
+            self.graph_correspondences - map from origin number.
+            value - map[dstOriginId] -> flow
+            Thus, map represents required amount of flow to be transferred between pair of origins.
         """
 
         if self.graph_correspondences is not None:
-            return self.graph_correspondences, self.total_od_flow
+            return
 
         with open(file_name, 'r') as file:
             trips_data = file.read()
-
-        # skip <NUMBER OF ZONES> parameter, will get from size of graph_correspondences
-        # reads some graph metadata
-        total_od_flow = scanf('<TOTAL OD FLOW> %f', trips_data)[0]
 
         # splitting origins
         p = re.compile("Origin[ \t]+[\d]+")
         origins_list = p.findall(trips_data)
         origins = np.array([int(re.sub('[a-zA-Z ]', '', line)) for line in origins_list])
 
+        # get origins correspondences
         p = re.compile("\n"
                        "[0-9.:; \n]+"
                        "\n\n")
@@ -104,25 +117,23 @@ class DataReader:
         # origin to map
         graph_correspondences = {}
         for origin_index in range(0, len(origins)):
+            # parse and save origins
             origin_correspondences = res_list[origin_index].strip('[\n;]').split(';')
+
             graph_correspondences[origins[origin_index]] = \
                 dict([scanf("%d:%f", line) for line in origin_correspondences])
 
         self.graph_correspondences = graph_correspondences
-        self.total_od_flow = total_od_flow
-        return graph_correspondences, total_od_flow
 
-    def ReadAnswer(self, filename):
+    def read_answer(self, filename):
         """
         Reads best known answer for current transport network
-        :param filename: name of file, saved in .tntp format
-        :return: dict
-                dict['flow'] - list of flow for each edge
-                dict['time'] - TODO
+        :param filename: name of file, saved in .tntp format,
+        self.flow - flow for each edge in graph
         """
 
-        if self.values_dict is not None:
-            return self.values_dict
+        if self.flow is not None:
+            return
 
         with open(filename) as file:
             lines = file.readlines()
@@ -134,12 +145,10 @@ class DataReader:
 
         lines = [line.strip('[\t; ]') for line in datalist]
 
-        values_dict = {'flow': [], 'time': []}
+        flow = []
 
         for line in lines:
             items = line.split()
-            values_dict['flow'].append(float(items[3]))
-            values_dict['time'].append(float(items[4]))
+            flow.append(float(items[3]))
 
-        self.values_dict = values_dict
-        return values_dict
+        self.flow = flow
