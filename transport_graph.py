@@ -84,7 +84,7 @@ class TransportGraph:
         return self.graph.get_out_edges(node_index)
     
     def shortest_distances(self, source, targets, times):
-        ep_time_map = self.graph.new_edge_property("double", vals = times.detach().numpy())
+        ep_time_map = self.graph.new_edge_property("double", np.maximum(times.detach().numpy(), self.freeflow_times))
         distances, pred_map = gtt.shortest_distance(g = self.graph,
                                                     source = source,
                                                     target = targets,

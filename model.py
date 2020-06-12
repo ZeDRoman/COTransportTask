@@ -28,16 +28,19 @@ class Model:
                                                           self.graph.freeflow_times, self.graph.capacities,
                                                           mu = self.mu, rho = self.rho)
 
-    def loss(self):
+    def loss_phi(self):
         return self.primal_dual_calculator.dual_func_value(self.t)
+
+    def loss_h(self):
+        return self.primal_dual_calculator.h_func(self.t)
 
     def new_loss(self):
         return self.primal_dual_calculator.new_dual_func_value(self.t)
 
-    def get_flows(self):
+    def get_flows(self, t):
         if len(self.graph_correspondences) == 0:
             return
-        flows = self.t.detach() - self.graph.freeflow_times
+        flows = t
         base_v = next(iter(self.graph_correspondences))
 
         in_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.in_edges(
@@ -77,18 +80,25 @@ class Model:
             print(in_edges_sum - out_edges_sum - in_flows_sum + out_lows_sum)
 
     def solve(self, num_iters=1000):
-        optimizer = optim.SGD([self.t], lr=0.000002, momentum=0.9)
+        optimizer = optim.RMSprop([self.t], lr=0.01)
+        grad_sum = None
         for i in range(num_iters):
             optimizer.zero_grad()
-            loss = self.loss()
+            loss = self.loss_phi()
+            loss.backward()
+            if grad_sum is None:
+                grad_sum = -self.t.grad
+            else:
+                grad_sum -= self.t.grad
+            loss = self.loss_h()
             loss.backward()
             optimizer.step()
             # print("new", loss)
             # print("old", self.loss())
             # print(self.t.sum())
-            print(self.primal_dual_calculator.primal_func_value(self.get_flows()))
+            print(self.primal_dual_calculator.primal_func_value(self.get_flows(grad_sum)))
 
-        flows = self.get_flows()
+        flows = self.get_flows(grad_sum)
         #print(flows - self.t.grad)
       #  print(len(self.t.grad), self.t.grad)
 
