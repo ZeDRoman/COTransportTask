@@ -1,9 +1,11 @@
 # model parameters:
 from functools import reduce
 
-from torch import optim
 
 import transport_graph as tg
+
+from torch import optim
+
 import torch
 
 import oracles
@@ -37,16 +39,26 @@ class Model:
             return
         flows = self.t.detach() - self.graph.freeflow_times
         base_v = next(iter(self.graph_correspondences))
-        in_edges = flows[self.graph.in_edges(base_v - 1)].sum()
-        out_edges = flows[self.graph.out_edges(base_v - 1)].sum()
-        in_flows_sum = reduce(lambda x, y: x+y, [self.graph_correspondences[i][base_v] if base_v in self.graph_correspondences[i] else 0 for i in self.graph_correspondences])
-        out_lows_sum = reduce(lambda x, y: x+y, [self.graph_correspondences[base_v][i] for i in self.graph_correspondences[base_v]])
-        coef_t = (in_edges - out_edges) / (in_flows_sum - out_lows_sum)
+
+        in_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.in_edges(
+            base_v - 1)))  # list(map(lambda x: x[0], phi_big_oracle.graph.in_edges(v - 1)))
+        out_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.out_edges(
+            base_v - 1)))  # list(map(lambda x: x[1], phi_big_oracle.graph.out_edges(v - 1)))
+
+        in_edges_sum = flows[in_edges].sum()
+        out_edges_sum = flows[out_edges].sum()
+        in_flows_sum = reduce(lambda x, y: x + y,
+                              [self.graph_correspondences[i][base_v] if base_v in self.graph_correspondences[i] else 0 for i in
+                               self.graph_correspondences])
+        out_lows_sum = reduce(lambda x, y: x + y,
+                              [self.graph_correspondences[base_v][i] for i in self.graph_correspondences[base_v]])
+
+        coef_t = (in_edges_sum - out_edges_sum) / (in_flows_sum - out_lows_sum)
         flows = flows / coef_t
         return flows
 
 
-    def solve(self, num_iters=10):
+    def solve(self, num_iters=100):
         optimizer = optim.Adam([self.t], lr=0.01)
         for i in range(num_iters):
             optimizer.zero_grad()
@@ -59,12 +71,20 @@ class Model:
             print(self.primal_dual_calculator.primal_func_value(self.get_flows()))
 
         flows = self.get_flows()
+
         for v in self.graph_correspondences.keys():
-            in_edges = flows[self.graph.in_edges(v - 1)[0]].sum()
-            out_edges = flows[self.graph.out_edges(v - 1)[0]].sum()
-            in_flows_sum = reduce(lambda x, y: x+y, [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0 for i in self.graph_correspondences])
-            out_lows_sum = reduce(lambda x, y: x+y, [self.graph_correspondences[v][i] for i in self.graph_correspondences[v]])
-            print(in_edges - out_edges - in_flows_sum + out_lows_sum)
+            in_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.in_edges(v - 1))) #list(map(lambda x: x[0], phi_big_oracle.graph.in_edges(v - 1)))
+            out_edges = list(map(lambda x: self.graph.pred_to_edge[x[1]][x[0]], self.graph.out_edges(v - 1))) #list(map(lambda x: x[1], phi_big_oracle.graph.out_edges(v - 1)))
+
+            in_edges_sum = flows[in_edges].sum()
+            out_edges_sum = flows[out_edges].sum()
+            in_flows_sum = reduce(lambda x, y: x + y,
+                                  [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0 for i in
+                                   self.graph_correspondences])
+            out_lows_sum = reduce(lambda x, y: x + y,
+                                  [self.graph_correspondences[v][i] for i in self.graph_correspondences[v]])
+
+            print(in_edges_sum - out_edges_sum - in_flows_sum + out_lows_sum)
         # flows = self.get_flows()
         # print(flows)
 
