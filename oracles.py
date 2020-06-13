@@ -13,21 +13,9 @@ class PhiBigOracleForSource():
         self.corr_targets = np.array(list(source_correspondences.keys()), dtype='int64') - 1
         self.corr_values = torch.from_numpy(np.array(list(source_correspondences.values())))
 
-
     def func(self, t_parameter):
         distances = self.graph.shortest_distances(self.source_index, self.corr_targets, t_parameter)
         return - torch.matmul(distances, self.corr_values)
-
-    def new_func(self, t_parameter):
-        val = None
-        for i in range(self.corr_targets.shape[0]):
-            path_tensor = self.graph.get_path_tensor(self.source_index, self.corr_targets[i])
-            v = self.corr_values[i] * torch.log(torch.exp(-torch.matmul(path_tensor, t_parameter)).sum())
-            if val is None:
-                val = v
-            else:
-                val += v
-        return val
 
 
 class PhiBigOracle():
@@ -51,13 +39,3 @@ class PhiBigOracle():
     def func(self, t_parameter):
         self._reset(t_parameter)
         return self.func_current
-
-    def new_func(self, t_parameter):
-        result = None
-        for auto_oracle in self.auto_oracles:
-            v = auto_oracle.func(t_parameter)
-            if result is None:
-                result = v
-            else:
-                result += v
-        return result

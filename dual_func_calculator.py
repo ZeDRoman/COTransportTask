@@ -7,8 +7,8 @@ class PrimalDualCalculator:
         self.links_number = len(freeflow_times)
         self.rho = rho
         self.mu = mu
-        self.freeflow_times = torch.from_numpy(freeflow_times)  # \bar{t}
-        self.capacities = torch.from_numpy(capacities)          # \bar{f}
+        self.freeflow_times = torch.from_numpy(freeflow_times)
+        self.capacities = torch.from_numpy(capacities)
         self.phi_big_oracle = phi_big_oracle
 
     # calculates h(t) = \Sigma \sigma_e^* (t_e)

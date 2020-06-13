@@ -1,4 +1,3 @@
-from functools import reduce
 import transport_graph as tg
 import dual_func_calculator as dfc
 import oracles
