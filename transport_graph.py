@@ -1,10 +1,8 @@
-# Attention: as shown on the table above
-# nodes indexed from 0 to ...
-# edges indexed from 0 to ...
+from functools import reduce
+
 import graph_tool.all as gt
 import graph_tool.topology as gtt
 import numpy as np
-import math
 
 import torch
 
@@ -59,3 +57,41 @@ class TransportGraph:
                 i = i_next
         distances = torch.stack([torch.index_select(times, 0, torch.tensor(path[i])).sum() for i in targets])
         return distances
+
+
+    # calculates sum of in-flow and out-flow for one vertex
+    def _get_in_out_flows_sum(self, flows, v):
+        in_edges = list(map(lambda x: x[2], self.in_edges(v - 1)))
+        out_edges = list(map(lambda x: x[2], self.out_edges(v - 1)))
+
+        in_edges_sum = flows[in_edges].sum()
+        out_edges_sum = flows[out_edges].sum()
+        return in_edges_sum, out_edges_sum
+
+    # calculates sum of in-flow and out-flow for one vertex from data
+    def _get_in_out_flows_sum_from_data(self, v, graph_correspondences):
+        in_flows_sum = reduce(lambda x, y: x + y,
+                              [graph_correspondences[i][v] if v in graph_correspondences[i] else 0
+                               for i in
+                               graph_correspondences])
+        out_flows_sum = reduce(lambda x, y: x + y,
+                               [graph_correspondences[v][i] for i in graph_correspondences[v]])
+        return in_flows_sum, out_flows_sum
+
+    def get_flows(self, t, graph_correspondences):
+        if len(graph_correspondences) == 0:
+            return
+        flows = t
+        base_v = next(iter(graph_correspondences))
+        in_edges_sum, out_edges_sum = self._get_in_out_flows_sum(flows, base_v)
+        in_flows_sum, out_flows_sum = self._get_in_out_flows_sum_from_data(base_v, graph_correspondences)
+
+        coef_t = (in_edges_sum - out_edges_sum) / (in_flows_sum - out_flows_sum)
+        flows = flows / coef_t
+        return flows
+
+    def check_graph(self, flows, graph_correspondences):
+        for v in graph_correspondences.keys():
+            in_edges_sum, out_edges_sum = self._get_in_out_flows_sum(flows, v)
+            in_flows_sum, out_flows_sum = self._get_in_out_flows_sum_from_data(v, graph_correspondences)
+            print(in_edges_sum - out_edges_sum - in_flows_sum + out_flows_sum)
