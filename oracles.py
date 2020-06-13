@@ -15,7 +15,7 @@ class PhiBigOracleForSource():
 
 
     def func(self, t_parameter):
-        distances, _ = self.graph.shortest_distances(self.source_index, self.corr_targets, t_parameter)
+        distances = self.graph.shortest_distances(self.source_index, self.corr_targets, t_parameter)
         return - torch.matmul(distances, self.corr_values)
 
     def new_func(self, t_parameter):
