@@ -6,9 +6,9 @@ import torch
 
 
 class Model:
-    def __init__(self, transport_graph, mu=0.25, rho=0.15):
-        self.graph = tg.TransportGraph(transport_graph)
-        self.graph_correspondences = transport_graph.graph_correspondences
+    def __init__(self, data_reader, mu=0.25, rho=0.15):
+        self.graph = tg.TransportGraph(data_reader)
+        self.graph_correspondences = data_reader.graph_correspondences
         self.mu = mu
         self.rho = rho
 

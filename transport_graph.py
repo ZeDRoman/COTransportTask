@@ -8,11 +8,11 @@ import torch
 
 
 class TransportGraph:
-    def __init__(self, graph_data):
-        graph_table = graph_data.graph
+    def __init__(self, data_reader):
+        graph_table = data_reader.graph
 
-        self.nodes_number = graph_data.nodes_number
-        self.links_number = graph_data.links_number
+        self.nodes_number = data_reader.nodes_number
+        self.links_number = data_reader.links_number
 
         self.graph = gt.Graph(directed=True)
         # nodes indexed from 0 to V-1
