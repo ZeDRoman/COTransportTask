@@ -6,13 +6,14 @@ import numpy as np
 
 import torch
 
+
 class TransportGraph:
     def __init__(self, graph_data):
         graph_table = graph_data.graph
 
         self.nodes_number = graph_data.nodes_number
         self.links_number = graph_data.links_number
-        
+
         self.graph = gt.Graph(directed=True)
         # nodes indexed from 0 to V-1
         self.graph.add_vertex(self.nodes_number)
@@ -26,20 +27,22 @@ class TransportGraph:
         # define data for edge properties
         self.capacities = np.array(graph_table[['Capacity']], dtype='float64').flatten()
         self.freeflow_times = np.array(graph_table[['Free Flow Time']], dtype='float64').flatten()
-        
+
+        # target_edge -> source_edge -> edge
         self.pred_to_edge = [{}] * self.nodes_number
         for node_index in range(self.nodes_number):
-            self.pred_to_edge[node_index] = {source: edge_index 
+            self.pred_to_edge[node_index] = {source: edge_index
                                              for source, _, edge_index in self.in_edges(node_index)}
-        
-    #source, target and index of an edge
+
+    # source, target and index of an edge
     def in_edges(self, node_index):
         return self.graph.get_in_edges(node_index, [self.graph.edge_index])
-    
-    #source, target and index of an edge
+
+    # source, target and index of an edge
     def out_edges(self, node_index):
         return self.graph.get_out_edges(node_index, [self.graph.edge_index])
-    
+
+    # get length of shortest distance from source to each target
     def shortest_distances(self, source, targets, times):
         ep_time_map = self.graph.new_edge_property("double", np.maximum(times.detach().numpy(), self.freeflow_times))
         distances, pred_map = gtt.shortest_distance(g=self.graph,
@@ -58,7 +61,6 @@ class TransportGraph:
         distances = torch.stack([torch.index_select(times, 0, torch.tensor(path[i])).sum() for i in targets])
         return distances
 
-
     # calculates sum of in-flow and out-flow for one vertex
     def _get_in_out_flows_sum(self, flows, v):
         in_edges = list(map(lambda x: x[2], self.in_edges(v - 1)))
@@ -68,8 +70,9 @@ class TransportGraph:
         out_edges_sum = flows[out_edges].sum()
         return in_edges_sum, out_edges_sum
 
-    # calculates sum of in-flow and out-flow for one vertex from data
-    def _get_in_out_flows_sum_from_data(self, v, graph_correspondences):
+    # calculates sum of original in-flow and out-flow for one vertex from data
+    @staticmethod
+    def _get_in_out_flows_sum_from_data(v, graph_correspondences):
         in_flows_sum = reduce(lambda x, y: x + y,
                               [graph_correspondences[i][v] if v in graph_correspondences[i] else 0
                                for i in
@@ -78,6 +81,7 @@ class TransportGraph:
                                [graph_correspondences[v][i] for i in graph_correspondences[v]])
         return in_flows_sum, out_flows_sum
 
+    # Normalize graph flows to original flow sizes
     def get_flows(self, t, graph_correspondences):
         if len(graph_correspondences) == 0:
             return
@@ -90,6 +94,7 @@ class TransportGraph:
         flows = flows / coef_t
         return flows
 
+    # Check graph is correct transport graph
     def check_graph(self, flows, graph_correspondences):
         for v in graph_correspondences.keys():
             in_edges_sum, out_edges_sum = self._get_in_out_flows_sum(flows, v)
