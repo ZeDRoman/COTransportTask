@@ -2,8 +2,10 @@ from functools import reduce
 import torch
 
 import dual_func_calculator as dfc
+
 import oracles
 import transport_graph as tg
+
 
 
 class Model:
@@ -13,6 +15,7 @@ class Model:
         self.total_od_flow = total_od_flow
         self.mu = mu
         self.rho = rho
+
         self.t = torch.tensor(self.graph.freeflow_times, requires_grad=True)
         self.grad_sum = None
         self.phi_big_oracle = oracles.PhiBigOracle(self.graph, self.graph_correspondences)
@@ -42,7 +45,9 @@ class Model:
     # calculates sum of in-flow and out-flow for one vertex from data
     def _get_in_out_flows_sum_from_data(self, v):
         in_flows_sum = reduce(lambda x, y: x + y,
+
                               [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0
+
                                for i in
                                self.graph_correspondences])
         out_flows_sum = reduce(lambda x, y: x + y,
@@ -66,6 +71,7 @@ class Model:
             in_edges_sum, out_edges_sum = self._get_in_out_flows_sum(flows, v)
             in_flows_sum, out_flows_sum = self._get_in_out_flows_sum_from_data(v)
             print(in_edges_sum - out_edges_sum - in_flows_sum + out_flows_sum)
+
 
     def solve(self, optimizer, num_iters=1000, loss_history=False, verbose=False):
         """
@@ -92,6 +98,7 @@ class Model:
             loss = self.loss_h()
             loss.backward()
 
+
             optimizer.step()
 
             primal_value = self.primal_dual_calculator.primal_func_value(self.get_flows(self.grad_sum))
@@ -105,3 +112,17 @@ class Model:
         if loss_history:
             return flows, primal_values
         return flows
+
+
+        flows = self.get_flows(self.grad_sum)
+
+        if loss_history:
+            return flows, primal_values
+        return flows
+      
+data_reader = DataReader()
+data_reader.read_graph("data/Anaheim_net.tntp", [0, 1, 2, 4])
+data_reader.read_correspondences("data/Anaheim_trips.tntp")
+model = Model(data_reader)
+optimizer = torch.optim.SGD(params=[model.t], lr=0.0000001)
+model.solve(optimizer, verbose=True)
