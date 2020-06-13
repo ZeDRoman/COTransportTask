@@ -34,17 +34,17 @@ class TransportGraph:
         self.max_path_length = maxpath_const * int(math.sqrt(self.links_number))
         
         self.graph = gt.Graph(directed=True)
-        #nodes indexed from 0 to V-1
+        # nodes indexed from 0 to V-1
         vlist = self.graph.add_vertex(self.nodes_number)
         # let's create some property maps
         ep_freeflow_time = self.graph.new_edge_property("double")
         ep_capacity = self.graph.new_edge_property("double")
         
-        #define data for edge properties
+        # define data for edge properties
         self.capacities = np.array(graph_table[['Capacity']], dtype = 'float64').flatten()
         self.freeflow_times = np.array(graph_table[['Free Flow Time']], dtype = 'float64').flatten()  
 
-        #adding edges to the graph
+        # adding edges to the graph
         inits = np.array(graph_table[['Init node']], dtype = 'int64').flatten()
         terms = np.array(graph_table[['Term node']], dtype = 'int64').flatten()
         for index in range(self.links_number):
@@ -55,7 +55,7 @@ class TransportGraph:
             ep_freeflow_time[edge] = self.freeflow_times[index]
             ep_capacity[edge] = self.capacities[index]
             
-        #save properties to graph
+        # save properties to graph
         self.graph.edge_properties["freeflow_times"] = ep_freeflow_time
         self.graph.edge_properties["capacities"] = ep_capacity
         
