@@ -53,12 +53,11 @@ class PhiBigOracle():
         return self.func_current
 
     def new_func(self, t_parameter):
-        value = None
+        result = None
         for auto_oracle in self.auto_oracles:
             v = auto_oracle.func(t_parameter)
             if result is None:
                 result = v
             else:
                 result += v
-        self.work_time += time.time() - tic
         return result

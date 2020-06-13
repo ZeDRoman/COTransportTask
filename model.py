@@ -2,10 +2,8 @@ from functools import reduce
 import torch
 
 import dual_func_calculator as dfc
-
 import oracles
 import transport_graph as tg
-
 
 
 class Model:
@@ -45,9 +43,7 @@ class Model:
     # calculates sum of in-flow and out-flow for one vertex from data
     def _get_in_out_flows_sum_from_data(self, v):
         in_flows_sum = reduce(lambda x, y: x + y,
-
                               [self.graph_correspondences[i][v] if v in self.graph_correspondences[i] else 0
-
                                for i in
                                self.graph_correspondences])
         out_flows_sum = reduce(lambda x, y: x + y,
@@ -119,10 +115,3 @@ class Model:
         if loss_history:
             return flows, primal_values
         return flows
-      
-data_reader = DataReader()
-data_reader.read_graph("data/Anaheim_net.tntp", [0, 1, 2, 4])
-data_reader.read_correspondences("data/Anaheim_trips.tntp")
-model = Model(data_reader)
-optimizer = torch.optim.SGD(params=[model.t], lr=0.0000001)
-model.solve(optimizer, verbose=True)
