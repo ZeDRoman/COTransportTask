@@ -27,14 +27,16 @@ class Model:
     def loss_h(self):
         return self.primal_dual_calculator.h_func(self.t)
 
+    # main logic here
     def solve(self, optimizer, num_iters=1000, loss_history=False, verbose=False):
         """
         If loss_history is True, list of primal function values is returned
-        :param optimizer:
-        :param num_iters:
-        :param loss_history:
+        :param optimizer: torch optimizer
+        :param num_iters: number of iterations
+        :param loss_history: flag if loss history to be returned
         :param verbose: logging
-        :return: flows, loss_history? TODO
+        :return: flows - flow for edge in resulting solution
+        :return: loss_history - history of primary func value change
         """
         primal_values = []
 
