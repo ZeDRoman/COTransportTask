@@ -1,9 +1,9 @@
 from functools import reduce
-import torch
-
+import transport_graph as tg
 import dual_func_calculator as dfc
 import oracles
-import transport_graph as tg
+
+import torch
 
 
 class Model:
@@ -54,7 +54,7 @@ class Model:
 
             if verbose or loss_history:
                 primal_value = self.primal_dual_calculator.primal_func_value(
-                                    self.graph.get_flows(self.grad_sum, self.graph_correspondences))
+                    self.graph.get_flows(self.grad_sum, self.graph_correspondences))
             if verbose:
                 print(primal_value)
             if loss_history:
