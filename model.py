@@ -39,6 +39,8 @@ class Model:
         :return: loss_history - history of primary func value change
         """
         primal_values = []
+        flows_histrory = []
+        duality_gap_history = []
 
         for i in range(num_iters):
             optimizer.zero_grad()
@@ -56,13 +58,19 @@ class Model:
             if verbose or loss_history:
                 primal_value = self.primal_dual_calculator.primal_func_value(
                     self.graph.get_flows(self.grad_sum, self.graph_correspondences))
-            if verbose:
-                print(primal_value)
-            if loss_history:
-                primal_values.append(primal_value)
+                flows = self.graph.get_flows(self.grad_sum, self.graph_correspondences)
+                duality_gap = self.primal_dual_calculator.duality_gap(self.t, flows).item()
 
-        flows = self.graph.get_flows(self.grad_sum, self.graph_correspondences)
+                if verbose:
+                    print("primal_value =", primal_value, "; duality_gap =", duality_gap)
+
+                if loss_history:
+                    primal_values.append(primal_value)
+                    flows_histrory.append(flows)
+                    duality_gap_history.append(duality_gap)
 
         if loss_history:
-            return flows, primal_values
+            return flows_histrory, primal_values, duality_gap_history
+
+        flows = self.graph.get_flows(self.grad_sum, self.graph_correspondences)
         return flows

@@ -34,3 +34,6 @@ class PrimalDualCalculator:
             return np.dot(self.freeflow_times * flows,
                           self.rho * self.mu / (1.0 + self.mu) *
                           (flows / self.capacities) ** (1.0 / self.mu) + 1.0)
+
+    def duality_gap(self, times, flows):
+        return self.h_func(times) + self.phi_big_value(times) + self.primal_func_value(flows)
